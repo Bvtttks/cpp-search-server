@@ -59,7 +59,6 @@ public:
         const vector<string> words = SplitIntoWordsNoStop(document);
         int size = words.size();
         double TF;
-        //cout << "\n\n\niteration!";
         for(string str : words) {
             TF = (double)count(begin(words), end(words), str) / size;
             word_to_document_freqs_[str].insert({document_id, TF});
