@@ -57,12 +57,9 @@ public:
     
     void AddDocument(int document_id, const string& document) {
         const vector<string> words = SplitIntoWordsNoStop(document);
-        int size = words.size();
-        double TF;
-        for(string str : words) {
-            TF = (double)count(begin(words), end(words), str) / size;
-            word_to_document_freqs_[str].insert({document_id, TF});
-        }
+        const double weight = 1.0 / words.size();
+        for(const string& str : words)
+            word_to_document_freqs_[str][document_id] += weight;
         ++document_count_;
     }
     
@@ -119,14 +116,11 @@ private:
     vector<Document> FindAllDocuments(const Query& query_words) const {
         map<int, double> document_to_relevance; // id дока и его релевантность
         double IDF;
-        for(string str : query_words.plus) { // цикл по плюс словам запроса
+        for(const string& str : query_words.plus) { // цикл по плюс словам запроса
             if(word_to_document_freqs_.count(str)) { // если слово есть в документах
                 IDF = log((1.0 * document_count_ / word_to_document_freqs_.at(str).size())); // подсчёт IDF +слова запроса
-                if(word_to_document_freqs_.at(str).size()){
-                    for(const auto& [key, TF]: word_to_document_freqs_.at(str)) { // смотрим TF этого слова для каждого дока
-                        document_to_relevance[key] += (double)(IDF * TF); // записываем релевантность этого дока
-                    }
-                }
+                    for(const auto& [key, TF]: word_to_document_freqs_.at(str)) // смотрим TF этого слова для каждого дока
+                        document_to_relevance[key] += IDF * TF; // записываем релевантность этого дока
             }
         }
         for(string str : query_words.minus) {
