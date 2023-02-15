@@ -47,7 +47,7 @@ struct Document {
     int id;
     double relevance;
     int rating;
-}
+};
 
 enum class DocumentStatus {
     ACTUAL,
@@ -92,9 +92,10 @@ public:
             if(filter(doc.id, documents_.at(doc.id).status, doc.rating))
                 matched_documents.push_back(doc);
         }
+        constexpr int inaccuracy_limt = 1e-6;
         sort(matched_documents.begin(), matched_documents.end(),
              [](const Document& lhs, const Document& rhs) {
-            if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+            if (abs(lhs.relevance - rhs.relevance) < inaccuracy_limt) {
                 return lhs.rating > rhs.rating;
             } else {
                 return lhs.relevance > rhs.relevance;
@@ -360,18 +361,65 @@ void TestRatingCalculation() {
 
 void TestSearchForStatus() {
     const vector<int> ratings = {1, 2, 3};
-    SearchServer server;
-    server.AddDocument(0, "city and no text!!!!!!!!", DocumentStatus::REMOVED, ratings);
-    server.AddDocument(1, "cat in the big city"s, DocumentStatus::ACTUAL, ratings);
-    server.AddDocument(2, "big developer in the big city", DocumentStatus::ACTUAL, ratings);
-    server.AddDocument(3, "city dog city", DocumentStatus::BANNED, ratings);
-    server.AddDocument(4, "city and the empty document", DocumentStatus::IRRELEVANT, ratings);
-    const auto found_docs = server.FindTopDocuments("city"s, DocumentStatus::ACTUAL);
-    const Document& doc0 = found_docs[0];
-    const Document& doc1 = found_docs[1];
-    ASSERT_HINT(found_docs.size() == 2, "Search returns the wrong number of documents"s);
-    ASSERT_HINT((doc0.id == 1 || doc0.id == 2), "Search returns documents with incorrect statuses"s);
-    ASSERT_HINT((doc1.id == 1 || doc1.id == 2), "Search returns documents with incorrect statuses"s);
+    {
+        SearchServer server;
+        server.AddDocument(0, "city and no text!!!!!!!!", DocumentStatus::REMOVED, ratings);
+        server.AddDocument(1, "cat in the big city"s, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(2, "big developer in the big city", DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(3, "city dog city", DocumentStatus::BANNED, ratings);
+        server.AddDocument(4, "city and the empty document", DocumentStatus::IRRELEVANT, ratings);
+        const auto found_docs = server.FindTopDocuments("city"s, DocumentStatus::ACTUAL);
+        const Document& doc0 = found_docs[0];
+        const Document& doc1 = found_docs[1];
+        ASSERT_HINT(found_docs.size() == 2, "Search returns the wrong number of documents"s);
+        ASSERT_HINT((doc0.id == 1 || doc0.id == 2), "Search returns documents with incorrect statuses"s);
+        ASSERT_HINT((doc1.id == 1 || doc1.id == 2), "Search returns documents with incorrect statuses"s);
+    }
+    
+    {
+        SearchServer server;
+        server.AddDocument(0, "city and no text!!!!!!!!", DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(1, "cat in the big city"s, DocumentStatus::REMOVED, ratings);
+        server.AddDocument(2, "big developer in the big city", DocumentStatus::REMOVED, ratings);
+        server.AddDocument(3, "city dog city", DocumentStatus::BANNED, ratings);
+        server.AddDocument(4, "city and the empty document", DocumentStatus::IRRELEVANT, ratings);
+        const auto found_docs = server.FindTopDocuments("city"s, DocumentStatus::REMOVED);
+        const Document& doc0 = found_docs[0];
+        const Document& doc1 = found_docs[1];
+        ASSERT_HINT(found_docs.size() == 2, "Search returns the wrong number of documents"s);
+        ASSERT_HINT((doc0.id == 1 || doc0.id == 2), "Search returns documents with incorrect statuses"s);
+        ASSERT_HINT((doc1.id == 1 || doc1.id == 2), "Search returns documents with incorrect statuses"s);
+    }
+    
+    {
+        SearchServer server;
+        server.AddDocument(0, "city and no text!!!!!!!!", DocumentStatus::REMOVED, ratings);
+        server.AddDocument(1, "cat in the big city"s, DocumentStatus::IRRELEVANT, ratings);
+        server.AddDocument(2, "big developer in the big city", DocumentStatus::IRRELEVANT, ratings);
+        server.AddDocument(3, "city dog city", DocumentStatus::BANNED, ratings);
+        server.AddDocument(4, "city and the empty document", DocumentStatus::ACTUAL, ratings);
+        const auto found_docs = server.FindTopDocuments("city"s, DocumentStatus::IRRELEVANT);
+        const Document& doc0 = found_docs[0];
+        const Document& doc1 = found_docs[1];
+        ASSERT_HINT(found_docs.size() == 2, "Search returns the wrong number of documents"s);
+        ASSERT_HINT((doc0.id == 1 || doc0.id == 2), "Search returns documents with incorrect statuses"s);
+        ASSERT_HINT((doc1.id == 1 || doc1.id == 2), "Search returns documents with incorrect statuses"s);
+    }
+    
+    {
+        SearchServer server;
+        server.AddDocument(0, "city and no text!!!!!!!!", DocumentStatus::REMOVED, ratings);
+        server.AddDocument(1, "cat in the big city"s, DocumentStatus::BANNED, ratings);
+        server.AddDocument(2, "big developer in the big city", DocumentStatus::BANNED, ratings);
+        server.AddDocument(3, "city dog city", DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(4, "city and the empty document", DocumentStatus::IRRELEVANT, ratings);
+        const auto found_docs = server.FindTopDocuments("city"s, DocumentStatus::BANNED);
+        const Document& doc0 = found_docs[0];
+        const Document& doc1 = found_docs[1];
+        ASSERT_HINT(found_docs.size() == 2, "Search returns the wrong number of documents"s);
+        ASSERT_HINT((doc0.id == 1 || doc0.id == 2), "Search returns documents with incorrect statuses"s);
+        ASSERT_HINT((doc1.id == 1 || doc1.id == 2), "Search returns documents with incorrect statuses"s);
+    }
 }
 
 void TestUsersLambda() {
@@ -464,4 +512,3 @@ int main() {
     // Если вы видите эту строку, значит все тесты прошли успешно
     cout << "Search server testing finished"s << endl;
 }
-
