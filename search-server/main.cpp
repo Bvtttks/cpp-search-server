@@ -107,7 +107,7 @@ public:
         for (const string& word : words)
             word_to_document_freqs_[word][document_id] += inv_word_count;
         documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
-        ID_order_of_addition.push_back(document_id);
+        IDOrderOfAddition_.push_back(document_id);
     }
 
     template <typename DocumentPredicate>
@@ -168,9 +168,7 @@ public:
     int GetDocumentId(int index) const {
         if(index < 0 || index > GetDocumentCount())
             throw out_of_range("Incorrect ID");
-        if (ID_order_of_addition.size() >= index && ID_order_of_addition[index] == index)
-            throw out_of_range("The index is out of the acceptable range"s);
-        return index;
+        return IDOrderOfAddition_[index];
     }
 
 private:
@@ -181,7 +179,7 @@ private:
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
-    vector<int> ID_order_of_addition;
+    vector<int> IDOrderOfAddition_;
 
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
