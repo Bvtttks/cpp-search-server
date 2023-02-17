@@ -100,15 +100,14 @@ public:
     void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings) {
         if (document_id < 0)
             throw invalid_argument("Index less than zero");
-        for(int id = 0; id < GetDocumentCount(); ++id) {
-            if(document_id == GetDocumentId(id))
-                throw invalid_argument("Indexes cannot be repeated");
-        }
+        if(documents_.count(document_id))
+            throw invalid_argument("Indexes cannot be repeated");
         const vector<string> words = SplitIntoWordsNoStop(document);
         const double inv_word_count = 1.0 / words.size();
         for (const string& word : words)
             word_to_document_freqs_[word][document_id] += inv_word_count;
         documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
+        ID_order_of_addition.push_back(document_id);
     }
 
     template <typename DocumentPredicate>
@@ -142,7 +141,7 @@ public:
     }
 
     int GetDocumentCount() const {
-        return documents_.size();
+        return static_cast<int>(documents_.size());
     }
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
@@ -169,12 +168,9 @@ public:
     int GetDocumentId(int index) const {
         if(index < 0 || index > GetDocumentCount())
             throw out_of_range("Incorrect ID");
-        for(auto& [id, data] : documents_) {
-            if(index == 0)
-                return id;
-            --index;
-        }
-        throw out_of_range("The index is out of the acceptable range"s);
+        if (ID_order_of_addition.size() >= index && ID_order_of_addition[index] == index)
+            throw out_of_range("The index is out of the acceptable range"s);
+        return index;
     }
 
 private:
@@ -185,6 +181,7 @@ private:
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
+    vector<int> ID_order_of_addition;
 
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
@@ -222,7 +219,7 @@ private:
         bool is_minus = false;
         // Word shouldn't be empty
         if (text[0] == '-') {
-            if (text.size() == 1 || (text.size() > 1 && (text[1] == '-' || text[1] == ' ')))
+            if (text.size() == 1 || (text.size() > 1 && text[1] == '-'))
                 throw invalid_argument("Invalid declaration of minus-words"s);
             is_minus = true;
             text = text.substr(1);
