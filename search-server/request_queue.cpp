@@ -3,11 +3,6 @@
 #include <deque>
 using namespace std;
 
-template <typename DocumentPredicate>
-vector<Document> RequestQueue::AddFindRequest(const string& raw_query, DocumentPredicate document_predicate) {
-    return Request_Processing_(search_server_.FindTopDocuments(raw_query, document_predicate));
-}
-
 vector<Document> RequestQueue::AddFindRequest(const string& raw_query, DocumentStatus status) {
     return Request_Processing_(search_server_.FindTopDocuments(raw_query, status));
 }
