@@ -19,6 +19,8 @@ enum class DocumentStatus {
 
 class SearchServer {
 public:
+    std::map<int, std::set<std::string>> id_to_words;
+
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words);
 
@@ -29,7 +31,9 @@ public:
 
     void AddDocument(int document_id, const std::string& document, DocumentStatus status,
                      const std::vector<int>& ratings);
-
+    
+    void RemoveDocument(int document_id);
+    
     template <typename DocumentPredicate>
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const;
 
@@ -39,9 +43,17 @@ public:
 
     int GetDocumentCount() const;
 
-    int GetDocumentId(int index) const;
-
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
+    
+    auto begin() {
+        return all_ids_.begin();
+    }
+    
+    auto end() {
+        return all_ids_.end();
+    }
+    
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
 private:
     struct DocumentData {
@@ -51,8 +63,8 @@ private:
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
-    std::vector<int> document_ids_;
-
+    std::set<int> all_ids_;
+        
     bool IsStopWord(const std::string& word) const;
 
     static bool IsValidWord(const std::string& word);
@@ -83,6 +95,7 @@ private:
 
     template <typename DocumentPredicate>
     std::vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const;
+    
 };
 
 template <typename StringContainer>
@@ -95,14 +108,14 @@ SearchServer::SearchServer(const StringContainer& stop_words)
 }
 
 template <typename DocumentPredicate>
-vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
+std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
     const auto query = ParseQuery(raw_query);
 
     auto matched_documents = FindAllDocuments(query, document_predicate);
 
     sort(matched_documents.begin(), matched_documents.end(),
          [](const Document& lhs, const Document& rhs) {
-             if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+             if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
                  return lhs.rating > rhs.rating;
              } else {
                  return lhs.relevance > rhs.relevance;
@@ -115,9 +128,9 @@ vector<Document> SearchServer::FindTopDocuments(const string& raw_query, Documen
 }
 
 template <typename DocumentPredicate>
-vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
-    map<int, double> document_to_relevance;
-    for (const string& word : query.plus_words) {
+std::vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
+    std::map<int, double> document_to_relevance;
+    for (const std::string& word : query.plus_words) {
         if (word_to_document_freqs_.count(word) == 0) {
             continue;
         }
@@ -130,7 +143,7 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
         }
     }
 
-    for (const string& word : query.minus_words) {
+    for (const std::string& word : query.minus_words) {
         if (word_to_document_freqs_.count(word) == 0) {
             continue;
         }
@@ -139,7 +152,7 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
         }
     }
 
-    vector<Document> matched_documents;
+    std::vector<Document> matched_documents;
     for (const auto [document_id, relevance] : document_to_relevance) {
         matched_documents.push_back(
             {document_id, relevance, documents_.at(document_id).rating});
