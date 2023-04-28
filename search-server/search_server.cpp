@@ -69,11 +69,14 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& 
 }
 
 const map<string, double>& SearchServer::GetWordFrequencies(int document_id) const {
+    static map<string, double> empty_result;
+    empty_result.clear();
     static map<string, double> result;
-    result.clear();
     const auto docs_num = documents_.size();
     for(string word : id_to_words.at(document_id))
         result.insert({word, word_to_document_freqs_.at(word).size() / docs_num});
+    if (result.empty())
+        return empty_result;
     return result;
 }
 
