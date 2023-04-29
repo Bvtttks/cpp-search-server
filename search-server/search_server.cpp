@@ -5,8 +5,6 @@
 #include <map>
 using namespace std;
 
-// std::map<std::string, std::map<int, double>> word_to_document_freqs_;
-// std::map<int, std::map<std::string, double>> id_to_w_freqs;
 void SearchServer::AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings) {
     if ((document_id < 0) || (documents_.count(document_id) > 0))
         throw invalid_argument("Invalid document_id"s);
@@ -15,7 +13,7 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
     for (const string& word : words)
         word_to_document_freqs_[word][document_id] += inv_word_count;
     for (const string& word : words)
-        SearchServer::id_to_w_freqs[document_id].insert({word, word_to_document_freqs_[word][document_id]});
+        SearchServer::id_to_w_freqs_[document_id].insert({word, word_to_document_freqs_[word][document_id]});
     documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
     all_ids_.insert(document_id);
 }
@@ -23,13 +21,12 @@ void SearchServer::AddDocument(int document_id, const string& document, Document
 void SearchServer::RemoveDocument(int document_id) {
     if (!documents_.count(document_id))
         return;
-    id_to_w_freqs.erase(document_id);
-    //for(string word : id_to_words.at(document_id))
-    //   word_to_document_freqs_.at(word).erase(document_id);
-    //id_to_words.erase(document_id);
+    set<string> this_doc_words;
+    for (auto [key, value] : GetWordFrequencies(document_id))
+        word_to_document_freqs_.at(key).erase(document_id);
+    id_to_w_freqs_.erase(document_id);
     documents_.erase(document_id);
     all_ids_.erase(document_id);
-    // теоретически надо сдвинуть id всех оставшихся документов, но это слишком затратно по времени и может внести небольшую неразбериху, поэтому я на всякий случай оставляю так
 }
 
 vector<Document> SearchServer::FindTopDocuments(const string& raw_query, DocumentStatus status) const {
@@ -71,7 +68,10 @@ tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& 
 }
 
 const map<string, double>& SearchServer::GetWordFrequencies(int document_id) const {
-    return SearchServer::id_to_w_freqs.at(document_id);
+    static map<string, double> empty_map;
+    if(all_ids_.count(document_id))
+        return SearchServer::id_to_w_freqs_.at(document_id);
+    return empty_map;
 }
 
 bool SearchServer::IsStopWord(const string& word) const {
