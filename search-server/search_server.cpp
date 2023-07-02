@@ -84,15 +84,6 @@ bool SearchServer::IsStopWord(const string_view word) const {
     return stop_words_.count(word) > 0;
 }
 
-/*
-bool SearchServer::IsValidWord(const string& word) {
-    // A valid word must not contain special characters
-    return none_of(word.begin(), word.end(), [](char c) {
-        return c >= '\0' && c < ' ';
-    });
-}
-*/
-
 bool SearchServer::IsValidWord(const string_view word) {
     // A valid word must not contain special characters
     return none_of(word.begin(), word.end(), [](char c) {
